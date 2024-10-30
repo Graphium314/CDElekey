@@ -21,6 +21,7 @@
  * PB1: SW1 (input)
  * PB2: KEY (output)
  * PB3: swap SW1 and SW2 (input)
+ * PA7: speed control (input)
  */
 
 int sw_dash_bm = PIN1_bm, sw_dot_bm = PIN0_bm;
@@ -33,17 +34,24 @@ bool swap_sw() { return !(VPORTB.IN & PIN3_bm); }
 
 int main() {
     // set PB2 as output
-    VPORTB.DIR |= (1 << 2);
+    VPORTB.DIR |= PIN2_bm;
 
     // set PB1, PB2, PB3 pull-up
     PORTB.PIN0CTRL = PORT_PULLUPEN_bm;
     PORTB.PIN1CTRL = PORT_PULLUPEN_bm;
     PORTB.PIN3CTRL = PORT_PULLUPEN_bm;
+    // settings for ADC
+    ADC0.CTRLA |= ADC_RESSEL_10BIT_gc;  // 10bit resolution
+    ADC0.CTRLA |= ADC_FREERUN_bm;       // free run mode
+    ADC0.CTRLC |= ADC_REFSEL_VDDREF_gc;  // VDD reference
+    ADC0.MUXPOS = ADC_MUXPOS_AIN7_gc;    // set PA7 analog input
+    ADC0.CTRLA |= ADC_ENABLE_bm;         // enable ADC
+    ADC0.COMMAND |= ADC_STCONV_bm;       // start conversion
 
     int counter = 0;
     int fase_now = FASE_DEFAULT;
     int fase_next = FASE_DEFAULT;
-    int dot_length = 100;
+    int dot_length;
 
     if (swap_sw()) {
         sw_dash_bm = PIN0_bm;
@@ -53,6 +61,7 @@ int main() {
     key_off();
 
     while (1) {
+      dot_length = 6000/(ADC0.RES/7+50); // 10-39wpm
         if (fase_now == FASE_DEFAULT) {
             if (is_sw_dash_on()) {
                 fase_now = FASE_DASH;
